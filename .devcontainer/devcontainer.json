@@ -11,7 +11,7 @@
   // ─── Features ────────────────────────────────────────────────────────────────
   "features": {
     // Node.js 24 LTS with corepack — required for yarn
-    "ghcr.io/devcontainers/features/node:1": {
+    "ghcr.io/devcontainers/features/node:2.0.0": {
       "version": "24",
       "nodeGypDependencies": true
     },
@@ -20,6 +20,66 @@
       "version": "latest",
       "dockerDashComposeVersion": "v2"
     }
-  }
+  },
 
+  // ─── Open-file limit ─────────────────────────────────────────────────────────
+  // `make run` and `yarn start` watch large file trees and will hit the default
+  // nofile limit of 1024. The developer guide recommends at least 8000.
+  "runArgs": ["--ulimit", "nofile=65536:65536"],
+
+  // ─── inotify watchers ────────────────────────────────────────────────────────
+  // Prevents `ENOSPC: System limit for number of file watchers reached`
+  // during `yarn start`. Runs on the host before the container is created.
+  "initializeCommand": "echo 'fs.inotify.max_user_watches=524288' | sudo tee -a /etc/sysctl.conf > /dev/null 2>&1 || true",
+
+  // ─── Post-create setup ────────────────────────────────────────────────────────
+  // Single string so steps run strictly in order:
+  //   1. Upgrade Go to 1.26.3 (matching go.mod)
+  //   2. Enable corepack and install the pinned yarn version
+  //   3. Install frontend dependencies
+  "postCreateCommand": "curl -fsSL https://go.dev/dl/go1.26.3.linux-amd64.tar.gz | sudo tar -C /usr/local -xz && sudo ln -sf /usr/local/go/bin/go /usr/local/bin/go && sudo ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt && corepack enable && corepack install && yarn install --immutable",
+
+  // ─── Environment variables ────────────────────────────────────────────────────
+  "remoteEnv": {
+    // Prevents Node heap-out-of-memory errors during `yarn start` / tsc.
+    // Lower to 4096 if your host has limited RAM.
+    "NODE_OPTIONS": "--max-old-space-size=8192",
+
+    // Matches the production build profile. Set to "1" if you need the
+    // CGO SQLite driver for local development.
+    "CGO_ENABLED": "0",
+
+    // Ensure Go tools installed via `go install` are on PATH.
+    "GOPATH": "/go",
+    "PATH": "${containerEnv:PATH}:/go/bin"
+  },
+
+  // ─── Forwarded ports ──────────────────────────────────────────────────────────
+  "forwardPorts": [
+    3000, // Grafana web server (`make run`)
+    3333  // Webpack dev server (`yarn start`)
+  ],
+
+  "portsAttributes": {
+    "3000": { "label": "Grafana", "onAutoForward": "openBrowser" },
+    "3333": { "label": "Webpack Dev Server", "onAutoForward": "notify" }
+  },
+
+  // ─── VS Code extensions ───────────────────────────────────────────────────────
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",              // Go language support
+        "dbaeumer.vscode-eslint", // ESLint for the frontend
+        "esbenp.prettier-vscode"  // Prettier formatter
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "js/ts.tsdk.path": "node_modules/typescript/lib",
+        "js/ts.tsdk.promptToUseWorkspaceVersion": true
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
 }
