@@ -50,6 +50,7 @@ export {
   isTimeSeriesFrame,
   isTimeSeriesFrames,
   isTimeSeriesField,
+  isTimeseriesValueFieldType,
   getRowUniqueId,
   addRow,
   alignTimeRangeCompareData,

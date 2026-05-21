@@ -503,3 +503,115 @@ describe('utils', () => {
     });
   });
 });
+
+describe('getContentItems allNumeric sort comparator', () => {
+  // The comparator choice (numberCmp vs stringCmp) is observable when one field has a
+  // NaN display.numeric (sorting to MAX_SAFE_INT under numberCmp) but a text value that
+  // would sort alphabetically early under stringCmp (collator with numeric:true).
+  //
+  // Setup:
+  //   nanField: display.numeric=NaN, display.text='abc' → numberCmp puts it LAST (MAX_SAFE_INT)
+  //   numField: display.numeric=10,  display.text='z'   → numberCmp puts it FIRST (10 < MAX_SAFE_INT)
+  //
+  // With numberCmp (allNumeric=true):  numField (10) first, nanField (MAX_SAFE_INT) last.
+  // With stringCmp (allNumeric=false): nanField ('abc') first, numField ('z') last.
+
+  const timeField: Field = {
+    name: 'time',
+    type: FieldType.time,
+    values: [1000],
+    config: {},
+    display: () => ({ text: '1000', numeric: 1000, color: '#000' }),
+  } as unknown as Field;
+
+  // A number field whose display produces a well-defined numeric.
+  const numField: Field = {
+    name: 'num',
+    type: FieldType.number,
+    values: [10],
+    config: {},
+    display: () => ({ text: 'z', numeric: 10, color: '#000' }),
+  } as unknown as Field;
+
+  // A boolean field whose display produces NaN numeric but an early-sorting text.
+  const boolField: Field = {
+    name: 'flag',
+    type: FieldType.boolean,
+    values: [true],
+    config: {},
+    display: () => ({ text: 'abc', numeric: NaN, color: '#000' }),
+  } as unknown as Field;
+
+  // An enum field also producing NaN numeric — same pattern as boolField.
+  const enumField: Field = {
+    name: 'status',
+    type: FieldType.enum,
+    values: [0],
+    config: {},
+    display: () => ({ text: 'aaa', numeric: NaN, color: '#000' }),
+  } as unknown as Field;
+
+  // A string field — its presence flips allNumeric to false.
+  const strField: Field = {
+    name: 'label',
+    type: FieldType.string,
+    values: ['hello'],
+    config: {},
+    display: () => ({ text: 'mmm', numeric: NaN, color: '#000' }),
+  } as unknown as Field;
+
+  it('uses numberCmp when all value fields are isTimeseriesValueFieldType (number, boolean, enum)', () => {
+    // allNumeric stays true → numberCmp → numField (10) before boolField (NaN→MAX_SAFE_INT)
+    const rows = getContentItems(
+      [timeField, numField, boolField],
+      timeField,
+      [0, 0, 0],
+      null,
+      TooltipDisplayMode.Multi,
+      SortOrder.Ascending
+    );
+    expect(rows[0].label).toBe('num'); // numeric 10 sorts first
+    expect(rows[1].label).toBe('flag'); // NaN → MAX_SAFE_INT sorts last
+  });
+
+  it('enum fields preserve allNumeric=true, so numberCmp is used', () => {
+    const rows = getContentItems(
+      [timeField, numField, enumField],
+      timeField,
+      [0, 0, 0],
+      null,
+      TooltipDisplayMode.Multi,
+      SortOrder.Ascending
+    );
+    expect(rows[0].label).toBe('num'); // numeric 10 first
+    expect(rows[1].label).toBe('status'); // NaN → MAX_SAFE_INT last
+  });
+
+  it('falls back to stringCmp when a string field is present, reversing the NaN sort order', () => {
+    // Adding strField flips allNumeric=false → stringCmp compares display text
+    // 'abc' (boolField) < 'mmm' (strField) < 'z' (numField) alphabetically
+    const rows = getContentItems(
+      [timeField, numField, boolField, strField],
+      timeField,
+      [0, 0, 0, 0],
+      null,
+      TooltipDisplayMode.Multi,
+      SortOrder.Ascending
+    );
+    expect(rows[0].label).toBe('flag'); // text 'abc' sorts first under stringCmp
+    expect(rows[rows.length - 1].label).toBe('num'); // text 'z' sorts last
+  });
+
+  it('time field is excluded from output and does not affect allNumeric', () => {
+    const rows = getContentItems(
+      [timeField, numField],
+      timeField,
+      [0, 0],
+      null,
+      TooltipDisplayMode.Multi,
+      SortOrder.None
+    );
+    expect(rows.length).toBe(1);
+    expect(rows[0].label).toBe('num');
+  });
+});

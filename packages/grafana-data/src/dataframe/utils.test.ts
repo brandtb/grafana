@@ -3,7 +3,13 @@ import { FieldType } from '../types/dataFrame';
 import { type TimeRange } from '../types/time';
 
 import { createDataFrame, toDataFrame } from './processDataFrame';
-import { anySeriesWithTimeField, addRow, alignTimeRangeCompareData, shouldAlignTimeCompare } from './utils';
+import {
+  anySeriesWithTimeField,
+  addRow,
+  alignTimeRangeCompareData,
+  shouldAlignTimeCompare,
+  isTimeseriesValueFieldType,
+} from './utils';
 
 describe('anySeriesWithTimeField', () => {
   describe('single frame', () => {
@@ -178,6 +184,62 @@ describe('alignTimeRangeCompareData', () => {
     expect(frame.fields[0].config.custom?.existingProperty).toBe('existingValue');
     expect(frame.fields[0].config.custom?.timeCompare?.diffMs).toBe(ONE_WEEK_MS);
   });
+
+  const DASH_STYLE = { fill: 'dash', dash: [1, 5, 4, 5] };
+
+  it('applies dash line style to boolean fields', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1000] },
+        { name: 'flag', type: FieldType.boolean, values: [true] },
+      ],
+    });
+    alignTimeRangeCompareData(frame, ONE_DAY_MS, createTheme());
+    expect(frame.fields[1].config.custom?.lineStyle).toEqual(DASH_STYLE);
+  });
+
+  it('applies dash line style to enum fields', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1000] },
+        { name: 'status', type: FieldType.enum, values: [0], config: { type: { enum: { text: ['ok'] } } } },
+      ],
+    });
+    alignTimeRangeCompareData(frame, ONE_DAY_MS, createTheme());
+    expect(frame.fields[1].config.custom?.lineStyle).toEqual(DASH_STYLE);
+  });
+
+  it('does not apply dash line style to string fields', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1000] },
+        { name: 'label', type: FieldType.string, values: ['hello'] },
+      ],
+    });
+    alignTimeRangeCompareData(frame, ONE_DAY_MS, createTheme());
+    expect(frame.fields[1].config.custom?.lineStyle).toBeUndefined();
+  });
+
+  it('does not apply dash line style to time fields', () => {
+    const frame = toDataFrame({
+      fields: [{ name: 'time', type: FieldType.time, values: [1000] }],
+    });
+    alignTimeRangeCompareData(frame, ONE_DAY_MS, createTheme());
+    expect(frame.fields[0].config.custom?.lineStyle).toBeUndefined();
+  });
+});
+
+describe('isTimeseriesValueFieldType', () => {
+  it.each([FieldType.number, FieldType.boolean, FieldType.enum])('returns true for %s', (type) => {
+    expect(isTimeseriesValueFieldType(type)).toBe(true);
+  });
+
+  it.each([FieldType.string, FieldType.time, FieldType.other, FieldType.geo, FieldType.trace])(
+    'returns false for %s',
+    (type) => {
+      expect(isTimeseriesValueFieldType(type)).toBe(false);
+    }
+  );
 });
 
 describe('shouldAlignTimeCompare', () => {

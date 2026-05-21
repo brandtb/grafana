@@ -574,6 +574,26 @@ describe('setClassicPaletteIdxs', () => {
     expect(compare2.fields[1].state?.seriesIndex).toBe(1);
   });
 
+  it('assigns seriesIndex to enum fields', () => {
+    const frames = [
+      toDataFrame({
+        fields: [
+          { name: 'time', type: FieldType.time, values: [1, 2] },
+          { name: 'a', type: FieldType.number, values: [1, 2] },
+          {
+            name: 'status',
+            type: FieldType.enum,
+            values: [0, 1],
+            config: { type: { enum: { text: ['ok', 'err'] } } },
+          },
+        ],
+      }),
+    ];
+    setClassicPaletteIdxs(frames, createTheme(), 0);
+    expect(frames[0].fields[1].state?.seriesIndex).toBe(0);
+    expect(frames[0].fields[2].state?.seriesIndex).toBe(1);
+  });
+
   it('does not assign seriesIndex to string or time fields', () => {
     const frames = [
       toDataFrame({

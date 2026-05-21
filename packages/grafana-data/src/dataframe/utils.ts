@@ -6,6 +6,10 @@ import { getTimeField } from './processDataFrame';
 
 const MAX_TIME_COMPARISONS = 100;
 
+export function isTimeseriesValueFieldType(type: FieldType): boolean {
+  return type === FieldType.number || type === FieldType.boolean || type === FieldType.enum;
+}
+
 export function isTimeSeriesFrame(frame: DataFrame) {
   // If we have less than two frames we can't have a timeseries
   if (frame.fields.length < 2) {
@@ -153,7 +157,7 @@ export function alignTimeRangeCompareData(series: DataFrame, diff: number, theme
     };
 
     // Apply visual styling for comparison series
-    if (field.type === FieldType.number || field.type === FieldType.boolean || field.type === FieldType.enum) {
+    if (isTimeseriesValueFieldType(field.type)) {
       field.config.custom = {
         ...(field.config.custom ?? {}),
         lineStyle: {

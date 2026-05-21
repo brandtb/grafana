@@ -5,6 +5,7 @@ import {
   getDisplayProcessor,
   type GrafanaTheme2,
   isBooleanUnit,
+  isTimeseriesValueFieldType,
   type TimeRange,
   type PanelData,
   cacheFieldDisplayNames,
@@ -266,7 +267,7 @@ export const setClassicPaletteIdxs = (frames: DataFrame[], theme: GrafanaTheme2,
   const shouldProcessField = (field: Field, fieldIdx: number) => {
     return (
       fieldIdx !== skipFieldIdx &&
-      (field.type === FieldType.number || field.type === FieldType.boolean || field.type === FieldType.enum)
+      isTimeseriesValueFieldType(field.type)
     );
   };
 

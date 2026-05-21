@@ -4,6 +4,7 @@ import {
   FieldType,
   formattedValueToString,
   getFieldColorModeForField,
+  isTimeseriesValueFieldType,
 } from '@grafana/data';
 import { SortOrder, TooltipDisplayMode } from '@grafana/schema';
 
@@ -143,7 +144,7 @@ export const getContentItems = (
       continue;
     }
 
-    if (!(field.type === FieldType.number || field.type === FieldType.boolean || field.type === FieldType.enum)) {
+    if (!isTimeseriesValueFieldType(field.type)) {
       allNumeric = false;
     }
 
