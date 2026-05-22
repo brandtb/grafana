@@ -6,9 +6,9 @@ import {
   type FieldConfigSource,
   FieldMatcherID,
   fieldMatchers,
+  FieldType,
   getFieldDisplayName,
   isSystemOverrideWithRef,
-  isTimeseriesValueFieldType,
   type SystemConfigOverrideRule,
 } from '@grafana/data';
 import { SeriesVisibilityChangeMode } from '@grafana/ui';
@@ -161,7 +161,7 @@ const getDisplayNames = (data: DataFrame[], excludeName?: string): string[] => {
 
   for (const frame of data) {
     for (const field of frame.fields) {
-      if (!isTimeseriesValueFieldType(field.type)) {
+      if (field.type !== FieldType.number && field.type !== FieldType.boolean && field.type !== FieldType.enum) {
         continue;
       }
 
@@ -190,7 +190,7 @@ const getNamesOfHiddenFields = (overrides: ConfigOverrideRule[], data: DataFrame
 
       for (const frame of data) {
         for (const field of frame.fields) {
-          if (!isTimeseriesValueFieldType(field.type)) {
+          if (field.type !== FieldType.number && field.type !== FieldType.boolean && field.type !== FieldType.enum) {
             continue;
           }
 

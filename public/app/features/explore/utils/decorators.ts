@@ -8,6 +8,7 @@ import {
   DataTransformerID,
   FieldType,
   getDisplayProcessor,
+  isTimeseriesValueFieldType,
   type PanelData,
   standardTransformersRegistry,
   preProcessPanelData,
@@ -334,9 +335,11 @@ export function decorateData(
  */
 function isTimeSeries(frame: DataFrame): boolean {
   const grouped = groupBy(frame.fields, (field) => field.type);
-  return Boolean(
-    Object.keys(grouped).length === 2 && grouped[FieldType.time]?.length === 1 && grouped[FieldType.number]
-  );
+  if (grouped[FieldType.time]?.length !== 1) {
+    return false;
+  }
+  const valueTypes = Object.keys(grouped).filter((t) => t !== FieldType.time);
+  return valueTypes.length > 0 && valueTypes.every((t) => isTimeseriesValueFieldType(t as FieldType));
 }
 
 /**
